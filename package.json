@@ -1,0 +1,30 @@
+{
+  "name": "style-hub-pro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "متجر STYLE HUB PRO — Express + MySQL",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "setup": "node database/setup.js",
+    "seed": "node database/seed.js",
+    "doctor": "node database/doctor.js",
+    "test": "node backend/services/pricing.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.0",
+    "stripe": "^17.7.0",
+    "zod": "^3.23.8"
+  }
+}

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>الرئيسية — STYLE HUB PRO</title>
+<meta name="description" content="متجر ملابس رجالي وحريمي بقصّات مريحة وشحن لمصر والخليج وأوروبا">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/i18n.js"></script>
+</head>
+<body>
+<div id="hdr"></div>
+<main>
+<section class="hero"><div class="wrap">
+  <div class="hero-grid">
+    <div>
+      <h1><span>قصّات مظبوطة</span><span>على مقاسك.</span></h1>
+      <p class="lead">تيشيرتات، هوديز، جينز وفساتين بخامات تتحمّل الغسيل والاستخدام اليومي. اختار مقاسك من جدول واضح، وادفع بالطريقة اللي تناسبك.</p>
+      <div class="cta"><a class="btn tape-btn" href="products.html">تسوّق الآن</a><a class="btn ghost" href="products.html?sale=1">شوف التخفيضات</a></div>
+      <div class="hero-facts">
+        <div><b id="f1"></b>قطعة في التشكيلة</div>
+        <div><b id="f2"></b>استبدال مجاني</div>
+        <div><b id="f3"></b>دولة نوصّل لها</div>
+      </div>
+    </div>
+    <div class="hero-art" id="heroArt" aria-hidden="true"><span class="stamp">وصل حديثًا</span></div>
+  </div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <div class="sec-head"><div><h2>تسوّق حسب القسم</h2></div></div>
+  <div class="cats" id="cats"></div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <div class="sec-head"><div><h2>وصل حديثًا</h2></div><a class="link" href="products.html">كل المنتجات</a></div>
+  <div class="grid" id="fresh"></div>
+</div></section>
+
+<section class="section"><div class="wrap">
+  <div class="sec-head"><div><h2>الأكثر مبيعًا</h2><p>القطع اللي بترجع تطلبها تاني.</p></div><a class="link" href="products.html?sort=rating">كل المنتجات</a></div>
+  <div class="grid" id="best"></div>
+</div></section>
+
+<div class="wrap">
+  <div class="trust">
+    <div><b>شحن لمصر والخليج وأوروبا</b><span id="trustFree"></span></div>
+    <div><b id="trustPay"></b><span id="trustPay2"></span></div>
+    <div><b>استبدال خلال ١٤ يوم</b><span>لو المقاس مش مظبوط</span></div>
+    <div><b>خامات مختارة</b><span>قطن، دنيم وكتان</span></div>
+  </div>
+</div>
+
+<section class="section"><div class="wrap">
+  <div class="sec-head"><div><h2>عروض الأسبوع</h2><p>خصومات على قطع مختارة لحد نفاد الكمية.</p></div><a class="link" href="products.html?sale=1">كل التخفيضات</a></div>
+  <div class="grid" id="sale"></div>
+</div></section>
+
+<div class="wrap"><section class="promo">
+  <div><h2 id="promoT"></h2><p id="promoP"></p>
+  <button class="code" id="copyCode" type="button" aria-label="WELCOME50">WELCOME50</button></div>
+  <form id="news"><label class="sr" for="nm">بريدك الإلكتروني</label><input id="nm" type="email" placeholder="بريدك الإلكتروني" required><button class="btn tape-btn">اشترك</button><small>هنبعتلك العروض الجديدة فقط. تقدر تلغي الاشتراك في أي وقت.</small></form>
+</section></div>
+</main>
+<div id="ftr"></div>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  $('#f1').textContent=num(PRODUCTS.length)+'+'; $('#f2').textContent=t('{n} يوم',{n:num(14)}); $('#f3').textContent=num(COUNTRIES.length);
+  $('#trustFree').textContent=t('مجاني فوق {a}',{a:fmtC(freeFromCents())});
+  $('#trustPay').textContent=Country.isEG?t('الدفع عند الاستلام'):t('الدفع الآمن بالبطاقة');
+  $('#trustPay2').textContent=Country.isEG?t('افحص الطلب قبل الدفع'):t('بإشراف Stripe');
+  $('#promoT').textContent=t('أول طلب؟ خصم {a}',{a:fmtC(fixedCents(50))});
+  $('#promoP').textContent=t('اكتب الكود في صفحة السلة قبل إتمام الطلب. ولو طلبك فوق {a} الشحن علينا.',{a:fmtC(freeFromCents())});
+  $('#heroArt').insertAdjacentHTML('beforeend',
+    `<div class="g g1">${garment('hoodie','#F5B700')}</div><div class="g g2">${garment('jeans','#6F93C4')}</div><div class="g g3">${garment('tshirt','#F4F4F2')}</div>`);
+  const gar={men:['jacket','#4B6FA5'],women:['dress','#D8C3A5'],acc:['bag','#C9A27A']};
+  $('#cats').innerHTML=CATEGORIES.map(c=>`<a class="cat" href="products.html?cat=${c.id}"><div class="g">${garment(gar[c.id][0],gar[c.id][1])}</div><h3>${esc(t(c.name))}</h3><p>${esc(t(c.blurb))}</p></a>`).join('');
+  $('#fresh').innerHTML=[...PRODUCTS].sort((a,b)=>b.id-a.id).slice(0,4).map(productCard).join('');
+  $('#best').innerHTML=[...PRODUCTS].sort((a,b)=>b.reviews-a.reviews).slice(0,4).map(productCard).join('');
+  $('#sale').innerHTML=PRODUCTS.filter(p=>p.old).slice(0,4).map(productCard).join('');
+  $('#copyCode').onclick=()=>{try{navigator.clipboard.writeText('WELCOME50')}catch{} toast(t('تم نسخ الكود {c}',{c:'WELCOME50'}))};
+  $('#news').onsubmit=e=>{e.preventDefault();e.target.reset();toast(t('تم الاشتراك. شكرًا لك!'))};
+});
+</script>
+</body>
+</html>
