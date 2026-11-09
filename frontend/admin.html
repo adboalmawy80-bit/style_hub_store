@@ -63,7 +63,7 @@ const valid=o=>o.status!=='cancel';
 const rev=a=>a.filter(valid).reduce((s,o)=>s+egp(o),0);
 
 /* الدخول (تجريبي) */
-const ADMIN={email:'admin@stylehub.example',pw:'admin123'};
+const ADMIN={email:'admin@stylehub.example',pw:'admin123456'};
 const authed=()=>{try{return sessionStorage.getItem('sh_admin')==='1'}catch{return false}};
 let view='dash',q='';
 function login(){
