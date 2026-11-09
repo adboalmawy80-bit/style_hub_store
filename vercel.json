@@ -1,7 +1,6 @@
 {
-  "cleanUrls": true,
-  "rewrites": [
-    { "source": "/admin", "destination": "/frontend/admin.html" },
-    { "source": "/admin.html", "destination": "/frontend/admin.html" }
+  "redirects": [
+    { "source": "/admin", "destination": "/frontend/admin.html", "permanent": false },
+    { "source": "/admin.html", "destination": "/frontend/admin.html", "permanent": false }
   ]
 }
