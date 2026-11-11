@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>السلة — STYLE HUB PRO</title>
+<meta name="description" content="راجع منتجاتك قبل إتمام الطلب">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/i18n.js"></script>
+</head>
+<body>
+<div id="hdr"></div>
+<main class="wrap">
+  <div class="page-head"><div class="crumbs"><a href="index.html">الرئيسية</a> / السلة</div><h1>سلة المشتريات</h1></div>
+  <div id="cart-root"></div>
+</main>
+<div id="ftr"></div>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+function freeBar(){
+  const after=Cart.subtotal()-Cart.discount(), F=freeFromCents(), left=F-after, pct=Math.min(100,Math.round(after/F*100));
+  return `<div class="free-bar"><p>${left>0?t('باقي {a} ويبقى الشحن مجاني',{a:`<b>${fmtC(left)}</b>`}):`<b>${t('الشحن مجاني على طلبك')}</b>`}</p><div class="tr" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div></div>`;
+}
+function couponLabel(c){return c.type==='percent'?t('خصم {n}% على المشتريات',{n:num(c.value)}):t('خصم {a} على طلبك',{a:fmtC(fixedCents(c.value))})}
+function render(){
+  const ls=Cart.lines(), root=$('#cart-root');
+  if(!ls.length){root.innerHTML=`<div class="empty" style="margin-top:20px"><h3>${t('السلة فاضية')}</h3><p>${t('أضف قطعة تعجبك وارجع هنا.')}</p><a class="btn" href="products.html">${t('تصفّح المنتجات')}</a></div>`;return}
+  const c=Cart.coupon(), d=Cart.discount(), sub=Cart.subtotal();
+  root.innerHTML=`<div class="cart-grid">
+  <div class="panel"><h2>${t('المنتجات ({n})',{n:num(Cart.count())})}</h2>
+  ${ls.map(l=>`<div class="line"><a class="t" href="product-details.html?id=${l.p.id}">${Cart.thumb(l)}</a>
+    <div><h4><a href="product-details.html?id=${l.p.id}">${esc(pName(l.p))}</a></h4><small>${esc(t(l.color))} — ${t('مقاس {s}',{s:esc(l.size)})}</small><small>${t('{a} للقطعة',{a:fmtC(l.unit)})}</small>
+      <div style="display:flex;gap:14px;align-items:center;margin-top:8px"><div class="qty" style="height:38px"><button data-m="${l.idx}" aria-label="${t('تقليل')}">−</button><input value="${l.qty}" readonly aria-label="${t('الكمية')}" style="width:36px"><button data-p="${l.idx}" aria-label="${t('زيادة')}">+</button></div><button class="rm" data-rm="${l.idx}">${t('حذف')}</button></div></div>
+    <div class="lp">${fmtC(l.unit*l.qty)}</div></div>`).join('')}
+  </div>
+  <aside class="panel" style="position:sticky;top:90px"><h2>${t('ملخص الطلب')}</h2>
+    ${freeBar()}
+    <label for="cp" style="font-weight:600">${t('كود الخصم')}</label>
+    <div class="coupon"><input id="cp" placeholder="STYLE10" value="${c?esc(c.code):''}" autocomplete="off"><button class="btn sm" id="apply" type="button">${t('تطبيق')}</button></div>
+    <div class="coupon-msg ${c?'ok':''}" id="cmsg">${c?esc(couponLabel(c)):''}</div>
+    <div class="sum">
+      <div><span>${t('المجموع')}</span><span>${fmtC(sub)}</span></div>
+      ${d?`<div class="disc"><span>${t('الخصم')}</span><span>− ${fmtC(d)}</span></div>`:''}
+      <div><span>${t('الشحن')}</span><span>${sub-d>=freeFromCents()?t('مجاني'):Country.isEG?t('يُحسب حسب المحافظة'):fmtC(Math.round(Country.c.ship*100))}</span></div>
+      <div class="total"><span>${t('الإجمالي')}</span><span>${fmtC(sub-d)}</span></div>
+    </div>
+    <a class="btn tape-btn block" style="margin-top:18px" href="checkout.html">${t('إتمام الطلب')}</a>
+    <a class="btn ghost block" style="margin-top:8px" href="products.html">${t('متابعة التسوّق')}</a>
+  </aside></div>`;
+  $$('[data-m]').forEach(b=>b.onclick=()=>{const i=+b.dataset.m;const l=Cart.items()[i];l.qty>1?Cart.setQty(i,l.qty-1):0});
+  $$('[data-p]').forEach(b=>b.onclick=()=>{const i=+b.dataset.p;Cart.setQty(i,Cart.items()[i].qty+1)});
+  $$('[data-rm]',root).forEach(b=>b.onclick=()=>Cart.remove(+b.dataset.rm));
+  $('#apply').onclick=async()=>{
+    const v=$('#cp').value.trim().toUpperCase();
+    let found=null;
+    if(API.on){try{found=await API.call('/coupons/validate','POST',{code:v,country:Country.code})}catch(e){found=null}}
+    else if(COUPONS[v]) found={code:v,...COUPONS[v]};
+    if(found){store.set('sh_coupon',{code:found.code,type:found.type,value:Number(found.value)});render();$('#cmsg').textContent=t('تم تطبيق الكود')+': '+couponLabel(Cart.coupon())}
+    else{store.set('sh_coupon',null);render();$('#cp').value=v;$('#cmsg').className='coupon-msg bad';$('#cmsg').textContent=t('الكود غير صحيح. تأكد من كتابته كما وصلك.')}
+  };
+}
+document.addEventListener('DOMContentLoaded',render);
+document.addEventListener('cart:change',()=>{ if(document.getElementById('cart-root')) render(); });
+</script>
+</body>
+</html>

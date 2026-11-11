@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تفاصيل المنتج — STYLE HUB PRO</title>
+<meta name="description" content="تفاصيل المنتج والمقاسات والألوان">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/i18n.js"></script>
+</head>
+<body>
+<div id="hdr"></div>
+<main class="wrap" id="pd-root"></main>
+<div id="ftr"></div>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  const p=byId(new URLSearchParams(location.search).get('id'));
+  const root=$('#pd-root');
+  if(!p){root.innerHTML=`<div class="empty" style="margin-top:32px"><h3>${t('المنتج غير موجود')}</h3><p>${t('ممكن يكون الرابط قديم.')}</p><a class="btn" href="products.html">${t('تصفّح المنتجات')}</a></div>`;return}
+  document.title=pName(p)+' — STYLE HUB PRO';
+  let color=p.colors[0], size=null, qty=1, imgIdx=0;
+  const imgs=p.images||[];
+  const sale=p.old?Math.round((1-p.price/p.old)*100):0;
+  const rows=[['S',[88,92],[66,70]],['M',[94,98],[72,76]],['L',[100,104],[78,82]],['XL',[106,110],[84,88]],['XXL',[112,116],[90,94]]];
+  const rg=a=>num(a[0])+'–'+num(a[1]);
+  const delivery=Country.isEG?t('التوصيل داخل مصر خلال ٢–٥ أيام عمل حسب المحافظة.'):Country.c.region==='GCC'?t('التوصيل إلى دول الخليج خلال ٤–٧ أيام عمل.'):t('التوصيل إلى أوروبا خلال ٦–١٠ أيام عمل.');
+  root.innerHTML=`
+  <div class="page-head"><div class="crumbs"><a href="index.html">${t('الرئيسية')}</a> / <a href="products.html?cat=${p.cat}">${catName(p.cat)}</a> / ${esc(pName(p))}</div></div>
+  <div class="pd">
+    <div><div class="gallery ${imgs.length?'has-img':''}" id="gal"></div><div class="thumbs" id="thumbs"></div></div>
+    <div>
+      <h1>${esc(pName(p))}</h1>
+      <div class="pmeta">${stars(p.rating)} <span>${t('{r} ({n} تقييم)',{r:num(p.rating),n:num(p.reviews)})}</span></div>
+      <div class="price" style="margin-top:10px"><b>${fmtC(unitCents(p))}</b>${p.old?`<s>${fmtC(oldCents(p))}</s><span class="save">${t('وفّر {n}%',{n:num(sale)})}</span>`:''}</div>
+      <p style="margin-top:12px;color:var(--mute);max-width:56ch">${esc(pDesc(p))}</p>
+      <div class="opt-label">${t('اللون')} <span id="cn">${esc(t(color.n))}</span></div>
+      <div class="swatches" id="sws">${p.colors.map((c,i)=>`<button class="sw" type="button" title="${esc(t(c.n))}" aria-label="${esc(t(c.n))}" aria-pressed="${i===0}" data-i="${i}" style="background:${c.hex}"></button>`).join('')}</div>
+      <div class="opt-label">${t('المقاس')} <span><a class="link" href="#sg" onclick="document.getElementById('sgd').open=true">${t('دليل المقاسات')}</a></span></div>
+      <div class="sizes" id="szs" role="group" aria-label="${t('المقاس')}">${p.sizes.map(s=>`<button class="size" type="button" aria-pressed="false" data-s="${esc(s)}">${esc(t(s))}</button>`).join('')}</div>
+      <div class="err" id="err" role="alert"></div>
+      <div class="buy">
+        <div class="qty"><button type="button" id="m" aria-label="${t('تقليل')}">−</button><input id="q" value="1" inputmode="numeric" aria-label="${t('الكمية')}"><button type="button" id="pl" aria-label="${t('زيادة')}">+</button></div>
+        <button class="btn tape-btn" id="add" style="flex:1;min-width:180px">${t('أضف إلى السلة')}</button>
+      </div>
+      <div class="stock ${p.stock<=15?'low':''}">${p.stock<=15?t('باقي {n} قطعة فقط',{n:num(p.stock)}):t('متوفر في المخزون')}</div>
+      <div class="info">
+        <details open><summary>${t('الوصف والخامة')}</summary><p>${esc(pDesc(p))} ${t('تُغسل على ٣٠ درجة مئوية بحد أقصى مع الألوان المتشابهة، وتُكوى من الداخل.')}</p></details>
+        <details id="sgd"><summary id="sg">${t('دليل المقاسات (سم)')}</summary>
+          <table class="size-table"><tr><th>${t('المقاس')}</th><th>${t('الصدر')}</th><th>${t('الخصر')}</th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td>${rg(r[1])}</td><td>${rg(r[2])}</td></tr>`).join('')}</table>
+          <p>${t('قِس صدرك وخصرك بشريط قياس فوق ملابس خفيفة، واختار أقرب مقاس. لو بين مقاسين خذ الأكبر.')}</p></details>
+        <details><summary>${t('الشحن والاستبدال')}</summary><ul><li>${delivery}</li><li>${t('شحن مجاني للطلبات فوق {a}.',{a:fmtC(freeFromCents())})}</li><li>${t('استبدال أو استرجاع خلال ١٤ يومًا لو القطعة بحالتها وعليها التيكت.')}</li></ul></details>
+      </div>
+    </div>
+  </div>
+  <section class="section"><div class="sec-head"><h2>${t('قد يعجبك أيضًا')}</h2></div><div class="grid" id="rel"></div></section>`;
+  const gal=$('#gal');
+  const paint=()=>{gal.innerHTML=imgs.length?`<img src="${esc(imgs[imgIdx])}" alt="${esc(pName(p))}">`:garment(p.type,color.hex);
+    $('#thumbs').innerHTML=imgs.length>1?imgs.map((u,i)=>`<button type="button" class="th ${i===imgIdx?'on':''}" data-i="${i}" aria-label="${t('الصورة {n}',{n:num(i+1)})}"><img src="${esc(u)}" alt=""></button>`).join(''):'';
+    $$('#thumbs .th').forEach(b=>b.onclick=()=>{imgIdx=+b.dataset.i;paint()})};
+  paint();
+  $$('#sws .sw').forEach(b=>b.onclick=()=>{color=p.colors[+b.dataset.i];$$('#sws .sw').forEach(x=>x.setAttribute('aria-pressed',x===b));$('#cn').textContent=t(color.n);paint()});
+  const szs=$$('#szs .size'); if(p.sizes.length===1){size=p.sizes[0];szs[0].setAttribute('aria-pressed',true)}
+  szs.forEach(b=>b.onclick=()=>{size=b.dataset.s;szs.forEach(x=>x.setAttribute('aria-pressed',x===b));$('#err').textContent=''});
+  const qi=$('#q'); const setQ=v=>{qty=Math.max(1,Math.min(p.stock,v||1));qi.value=qty};
+  $('#m').onclick=()=>setQ(qty-1); $('#pl').onclick=()=>setQ(qty+1); qi.onchange=()=>setQ(parseInt(qi.value));
+  $('#add').onclick=()=>{
+    if(!size){$('#err').textContent=t('اختار المقاس الأول.');return}
+    Cart.add(p.id,size,color.n,qty);
+    toast(`${t('أُضيف إلى السلة')}: ${esc(pName(p))} <a href="cart.html">${t('عرض السلة')}</a>`);
+  };
+  $('#rel').innerHTML=PRODUCTS.filter(x=>x.cat===p.cat&&x.id!==p.id).slice(0,4).map(productCard).join('');
+});
+</script>
+</body>
+</html>

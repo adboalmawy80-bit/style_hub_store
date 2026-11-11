@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>المنتجات — STYLE HUB PRO</title>
+<meta name="description" content="تصفّح ملابس رجالي وحريمي وإكسسوارات مع فلترة بالمقاس واللون والسعر">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/i18n.js"></script>
+</head>
+<body>
+<div id="hdr"></div>
+<main class="wrap">
+  <div class="page-head"><div class="crumbs"><a href="index.html">الرئيسية</a> / <span id="crumb">كل المنتجات</span></div><h1 id="ttl">كل المنتجات</h1></div>
+  <div class="shop">
+    <aside class="filters" id="filters" aria-label="تصفية المنتجات">
+      <div style="display:flex;justify-content:space-between;align-items:center"><h3>تصفية</h3><button class="btn sm ghost fbtn" id="fclose" type="button">إغلاق</button></div>
+      <div class="fgroup"><strong>القسم</strong><div id="fcat"></div></div>
+      <div class="fgroup"><strong>المقاس</strong><div class="chips" id="fsize" style="margin-top:8px"></div></div>
+      <div class="fgroup"><strong>اللون</strong><div class="chips" id="fcolor" style="margin-top:8px"></div></div>
+      <div class="fgroup"><strong>أقصى سعر</strong><input type="range" id="fprice" min="200" max="1300" step="50" value="1300" aria-label="أقصى سعر"><div class="range-v"><span id="fpmin"></span><span id="fpv"></span></div></div>
+      <div class="fgroup"><label class="opt"><input type="checkbox" id="fsale"> التخفيضات فقط</label></div>
+      <button class="btn ghost block" id="freset" type="button">مسح التصفية</button>
+    </aside>
+    <section>
+      <div class="toolbar">
+        <div><button class="btn sm ghost fbtn" id="fopen" type="button">تصفية</button> <span id="count" style="color:var(--mute)"></span></div>
+        <label><span class="sr">ترتيب</span><select id="sort"><option value="new">الأحدث</option><option value="rating">الأعلى تقييمًا</option><option value="low">السعر: الأقل أولًا</option><option value="high">السعر: الأعلى أولًا</option></select></label>
+      </div>
+      <div class="grid" id="list" aria-live="polite"></div>
+    </section>
+  </div>
+</main>
+<div id="ftr"></div>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const MAXP = Math.max(1300, Math.ceil(Math.max(0, ...PRODUCTS.map(p => p.price)) / 50) * 50);   // لا نخفي منتجًا سعره أعلى من الحد الثابت
+const F = { cat: q.get('cat')||'', size: new Set(), color: new Set(), max: MAXP, sale: q.get('sale')==='1', q: (q.get('q')||'').trim().toLowerCase() };
+const ORD=['S','M','L','XL','XXL'];
+const sizes=[...new Set(PRODUCTS.flatMap(p=>p.sizes).filter(s=>s!=='مقاس واحد'))].sort((a,b)=>{const ia=ORD.indexOf(a),ib=ORD.indexOf(b);return ia>-1&&ib>-1?ia-ib:ia>-1?-1:ib>-1?1:a-b});
+const colors=[...new Map(PRODUCTS.flatMap(p=>p.colors).map(c=>[c.n,c])).values()];
+$('#fprice').max=MAXP;$('#fprice').value=MAXP;
+const hay=p=>(p.name+' '+p.desc+' '+(p.name_en||'')+' '+t(p.name)+' '+t(p.desc)+' '+catName(p.cat)).toLowerCase();
+function draw(){
+  let r=PRODUCTS.filter(p=>(!F.cat||p.cat===F.cat)&&p.price<=F.max&&(!F.sale||p.old)
+    &&(!F.size.size||p.sizes.some(s=>F.size.has(s)))&&(!F.color.size||p.colors.some(c=>F.color.has(c.n)))
+    &&(!F.q||hay(p).includes(F.q)));
+  const s=$('#sort').value;
+  if(s==='low')r.sort((a,b)=>a.price-b.price);else if(s==='high')r.sort((a,b)=>b.price-a.price);else if(s==='rating')r.sort((a,b)=>b.rating-a.rating);else r.sort((a,b)=>b.id-a.id);
+  $('#count').textContent=t('{n} منتج',{n:num(r.length)});
+  $('#list').innerHTML=r.length?r.map(productCard).join(''):`<div class="empty"><h3>${t('مفيش نتائج بالتصفية دي')}</h3><p>${t('جرّب تشيل فلتر أو ترفع حد السعر.')}</p><button class="btn" id="e-reset">${t('مسح التصفية')}</button></div>`;
+  const e=$('#e-reset'); if(e) e.onclick=reset;
+  const ttl=F.q?t('نتائج البحث: {q}',{q:q.get('q')}):F.sale?t('التخفيضات'):F.cat?catName(F.cat):t('كل المنتجات');
+  $('#ttl').textContent=ttl; $('#crumb').textContent=ttl; document.title=ttl+' — STYLE HUB PRO';
+  $('#fpv').textContent=money(F.max); $('#fpmin').textContent=money(200);
+}
+function build(){
+  $('#fcat').innerHTML=[['',t('الكل')],...CATEGORIES.map(c=>[c.id,t(c.name)])].map(([v,n])=>`<label class="opt"><input type="radio" name="cat" value="${v}" ${F.cat===v?'checked':''}> ${esc(n)}</label>`).join('');
+  $$('input[name=cat]').forEach(i=>i.onchange=()=>{F.cat=i.value;draw()});
+  $('#fsize').innerHTML=sizes.map(s=>`<button class="chip" type="button" aria-pressed="${F.size.has(s)}" data-s="${s}">${s}</button>`).join('');
+  $('#fcolor').innerHTML=colors.map(c=>`<button class="sw" type="button" title="${esc(t(c.n))}" aria-label="${esc(t(c.n))}" aria-pressed="${F.color.has(c.n)}" data-c="${esc(c.n)}" style="background:${c.hex};width:30px;height:30px"></button>`).join('');
+  $$('#fsize .chip').forEach(b=>b.onclick=()=>{const s=b.dataset.s;F.size.has(s)?F.size.delete(s):F.size.add(s);b.setAttribute('aria-pressed',F.size.has(s));draw()});
+  $$('#fcolor .sw').forEach(b=>b.onclick=()=>{const s=b.dataset.c;F.color.has(s)?F.color.delete(s):F.color.add(s);b.setAttribute('aria-pressed',F.color.has(s));draw()});
+  $('#fsale').checked=F.sale;
+}
+function reset(){F.cat='';F.size.clear();F.color.clear();F.max=MAXP;F.sale=false;F.q='';$('#fprice').value=MAXP;build();draw()}
+document.addEventListener('DOMContentLoaded',()=>{
+  const sv=q.get('sort'); if(sv)$('#sort').value=sv;
+  build(); draw();
+  $('#sort').onchange=draw;
+  $('#fprice').oninput=e=>{F.max=+e.target.value;draw()};
+  $('#fsale').onchange=e=>{F.sale=e.target.checked;draw()};
+  $('#freset').onclick=reset;
+  $('#fopen').onclick=()=>$('#filters').classList.add('open');
+  $('#fclose').onclick=()=>$('#filters').classList.remove('open');
+  const si=$('#search input'); if(si&&F.q)si.value=q.get('q');
+});
+</script>
+</body>
+</html>

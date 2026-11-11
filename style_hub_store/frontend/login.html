@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تسجيل الدخول — STYLE HUB PRO</title>
+<meta name="description" content="سجّل الدخول أو أنشئ حسابًا جديدًا">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/i18n.js"></script>
+</head>
+<body>
+<div id="hdr"></div>
+<main class="wrap" id="auth-root"></main>
+<div id="ftr"></div>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+const STAT={new:['جديد','new'],prep:['قيد التجهيز','prep'],ship:['تم الشحن','ship'],done:['تم التسليم','done'],cancel:['ملغي','cancel']};
+const st=s=>`<span class="pill ${STAT[s][1]}">${t(STAT[s][0])}</span>`;
+async function myOrders(user){
+  if(API.on){try{return (await API.call('/orders/mine')).map(o=>({id:o.ref,date:o.created_at,total:Number(o.total),currency:o.currency,status:o.status}))}catch{return []}}
+  return store.get('sh_orders',[]).filter(o=>o.customer.name===user.name||(o.customer.email&&o.customer.email===user.email)).map(o=>({id:o.id,date:o.date,total:o.total,currency:o.currency||'EGP',status:o.status}));
+}
+async function renderAuth(){
+  const user=store.get('sh_user',null), root=$('#auth-root');
+  if(user){
+    const mine=await myOrders(user);
+    root.innerHTML=`<div class="page-head"><h1>${t('أهلًا {n}',{n:esc(user.name.split(' ')[0])})}</h1></div>
+    <div class="cart-grid" style="grid-template-columns:1fr 320px"><section class="panel"><h2>${t('طلباتك')}</h2>${mine.length?`<div class="tbl-wrap"><table class="tbl"><tr><th>${t('رقم الطلب')}</th><th>${t('التاريخ')}</th><th>${t('الإجمالي')}</th><th>${t('الحالة')}</th></tr>${mine.map(o=>`<tr><td dir="ltr">${esc(o.id)}</td><td>${fmtDate(o.date)}</td><td>${fmtC(Math.round(o.total*100),o.currency)}</td><td>${st(o.status)}</td></tr>`).join('')}</table></div>`:`<p style="color:var(--mute)">${t('لسه ما عملتش طلبات. أول طلب ليك عليه خصم بالكود {c}.',{c:'WELCOME50'})}</p><a class="btn" style="margin-top:12px" href="products.html">${t('ابدأ التسوّق')}</a>`}</section>
+    <aside class="panel"><h2>${t('بياناتك')}</h2><p><b>${esc(user.name)}</b></p><p style="color:var(--mute);direction:ltr;text-align:start">${esc(user.email)}</p><button class="btn ghost block" id="out" style="margin-top:16px">${t('تسجيل الخروج')}</button></aside></div>`;
+    $('#out').onclick=()=>{store.set('sh_user',null);store.set('sh_token',null);location.reload()};
+    return;
+  }
+  root.innerHTML=`<div class="auth"><aside><div class="g">${garment('hoodie','#F5B700')}</div><h2>${t('حسابك يوفّر وقتك')}</h2><p>${t('تابع حالة طلباتك واحفظ بياناتك للمرة الجاية.')}</p></aside>
+  <main><div class="tabs" role="tablist"><button role="tab" aria-selected="true" id="t1">${t('تسجيل الدخول')}</button><button role="tab" aria-selected="false" id="t2">${t('حساب جديد')}</button></div>
+  <form id="fl" novalidate><div class="field"><label for="le">${t('البريد الإلكتروني')}</label><input id="le" type="email" dir="ltr" autocomplete="email"></div>
+    <div class="field"><label for="lp">${t('كلمة المرور')}</label><input id="lp" type="password" autocomplete="current-password"></div><div class="err" id="le-err" role="alert"></div><button class="btn tape-btn">${t('دخول')}</button></form>
+  <form id="fr" novalidate hidden><div class="field"><label for="rn">${t('الاسم بالكامل')}</label><input id="rn" autocomplete="name"></div>
+    <div class="field"><label for="re">${t('البريد الإلكتروني')}</label><input id="re" type="email" dir="ltr" autocomplete="email"></div>
+    <div class="field"><label for="rp">${t('كلمة المرور')}</label><input id="rp" type="password" autocomplete="new-password"><span class="m" style="color:var(--mute);font-size:13px">${t('٨ أحرف على الأقل.')}</span></div><div class="err" id="re-err" role="alert"></div><button class="btn tape-btn">${t('إنشاء حساب')}</button></form>
+  ${API.on?'':`<p class="note" style="margin-top:22px;max-width:420px">${t('نسخة العرض: الحسابات محفوظة في متصفحك فقط. عند ربط الخادم تُخزَّن كلمات المرور مشفّرة وتُدار الجلسات بـ JWT.')}</p>`}</main></div>`;
+  const tab=n=>{$('#fl').hidden=n!==1;$('#fr').hidden=n!==2;$('#t1').setAttribute('aria-selected',n===1);$('#t2').setAttribute('aria-selected',n===2)};
+  $('#t1').onclick=()=>tab(1);$('#t2').onclick=()=>tab(2);
+  const users=()=>store.get('sh_users',[]);
+  const remote=async(path,body,errEl)=>{try{const r=await API.call(path,'POST',body);store.set('sh_token',r.token);store.set('sh_user',{name:r.user.name,email:r.user.email});location.href=new URLSearchParams(location.search).get('next')||'login.html'}catch(x){errEl.textContent=x.message}};
+  $('#fl').onsubmit=e=>{e.preventDefault();if(API.on)return remote('/auth/login',{email:$('#le').value,password:$('#lp').value},$('#le-err'));
+    const u=users().find(x=>x.email===$('#le').value.trim().toLowerCase()&&x.pw===btoa(unescape(encodeURIComponent($('#lp').value))));
+    if(!u){$('#le-err').textContent=t('البريد أو كلمة المرور غير صحيحة. راجعهما وحاول تاني.');return}
+    store.set('sh_user',{name:u.name,email:u.email});location.href=new URLSearchParams(location.search).get('next')||'login.html'};
+  $('#fr').onsubmit=e=>{e.preventDefault();const n=$('#rn').value.trim(),m=$('#re').value.trim().toLowerCase(),p=$('#rp').value,er=$('#re-err');
+    if(n.length<3)return er.textContent=t('اكتب اسمك بالكامل.');
+    if(!/^\S+@\S+\.\S+$/.test(m))return er.textContent=t('اكتب بريدًا صحيحًا مثل name@example.com.');
+    if(p.length<8)return er.textContent=t('كلمة المرور لازم تكون ٨ أحرف على الأقل.');
+    if(API.on)return remote('/auth/register',{name:n,email:m,password:p},er);
+    if(users().some(x=>x.email===m))return er.textContent=t('البريد ده مسجّل قبل كده. جرّب تسجيل الدخول.');
+    store.set('sh_users',[...users(),{name:n,email:m,pw:btoa(unescape(encodeURIComponent(p)))}]);
+    store.set('sh_user',{name:n,email:m});location.reload()};
+}
+document.addEventListener('DOMContentLoaded',renderAuth);
+</script>
+</body>
+</html>

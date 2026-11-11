@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>إتمام الطلب — STYLE HUB PRO</title>
+<meta name="description" content="أدخل بيانات التوصيل واختر طريقة الدفع">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+<script src="js/i18n.js"></script>
+</head>
+<body>
+<div id="hdr"></div>
+<main class="wrap" id="co-root">
+  <div class="page-head"><div class="crumbs"><a href="index.html">الرئيسية</a> / <a href="cart.html">السلة</a> / إتمام الطلب</div><h1>إتمام الطلب</h1>
+    <ol class="steps"><li class="on">بيانات التوصيل</li><li class="on">الدفع</li><li>التأكيد</li></ol></div>
+  <div id="co-body"></div>
+</main>
+<div id="ftr"></div>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+const user=store.get('sh_user',null);
+const PHONE=Country.isEG?/^01[0125]\d{8}$/:/^\+?[0-9][0-9 ()-]{6,17}$/;
+const cardOK=API.on?CARD_ENABLED:true;          // بدون خادم: بطاقة تجريبية لتجربة الواجهة
+function summary(gov){
+  const sub=Cart.subtotal(), d=Cart.discount(), sh=Cart.shipping(gov);
+  return {sub,d,sh,total:sub-d+(sh||0)};
+}
+function renderSum(){
+  const gov=Country.isEG?$('#gov').value:'', s=summary(gov);
+  $('#sum').innerHTML=`<div><span>${t('المجموع')}</span><span>${fmtC(s.sub)}</span></div>${s.d?`<div class="disc"><span>${t('الخصم')}</span><span>− ${fmtC(s.d)}</span></div>`:''}
+  <div><span>${t('الشحن')}</span><span>${s.sh===null?t('اختر المحافظة'):s.sh===0?t('مجاني'):fmtC(s.sh)}</span></div><div class="total"><span>${t('الإجمالي')}</span><span>${fmtC(s.total)}</span></div>`;
+}
+function setSteps(n){$('.steps').innerHTML=[t('بيانات التوصيل'),t('الدفع'),t('التأكيد')].map((x,i)=>`<li class="${i<n?'on':''}">${x}</li>`).join('')}
+function showDone(o){
+  setSteps(3);
+  const card=o.pay==='card';
+  $('#co-body').innerHTML=`<div class="order-done"><svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="34" fill="#F5B700"/><path d="M21 37l10 10 20-22" fill="none" stroke="#12203A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h1>${card?t('تم الدفع وتأكيد طلبك'):t('تم استلام طلبك')}</h1>
+    <p style="color:var(--mute)">${card?t('سنرسل لك تفاصيل الشحن على بريدك الإلكتروني.'):t('هنتصل بيك على {p} لتأكيد الطلب قبل الشحن.',{p:`<span dir="ltr">${esc(o.phone||'')}</span>`})}</p>
+    <div class="ref">${esc(o.ref)}</div>
+    <div class="tl"><div class="on"><i></i>${t('تم الطلب')}</div><div><i></i>${t('قيد التجهيز')}</div><div><i></i>${t('تم الشحن')}</div><div><i></i>${t('تم التسليم')}</div></div>
+    <p>${card?t('المبلغ المدفوع'):t('الإجمالي عند الاستلام')}: <b>${fmtC(Math.round(o.total*100),o.currency)}</b></p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap"><a class="btn tape-btn" href="products.html">${t('متابعة التسوّق')}</a><a class="btn ghost" href="index.html">${t('الرئيسية')}</a></div></div>`;
+  scrollTo({top:0,behavior:'smooth'});
+}
+function emptyCart(){$('#co-body').innerHTML=`<div class="empty" style="margin-top:20px"><h3>${t('السلة فاضية')}</h3><p>${t('أضف منتجات قبل إتمام الطلب.')}</p><a class="btn" href="products.html">${t('تصفّح المنتجات')}</a></div>`}
+
+/* العودة من صفحة Stripe */
+async function afterStripe(sid){
+  $('#co-body').innerHTML=`<div class="empty" style="margin-top:20px"><h3>${t('جاري تأكيد الدفع…')}</h3><p>${t('لا تغلق الصفحة.')}</p></div>`;
+  try{
+    const r=await API.call('/orders/confirm?session_id='+encodeURIComponent(sid));
+    if(r.paid){Cart.clear();showDone({ref:r.ref,total:r.total,currency:r.currency,pay:'card'})}
+    else $('#co-body').innerHTML=`<div class="empty" style="margin-top:20px"><h3>${t('لم يكتمل الدفع بعد')}</h3><p>${t('إذا خُصم المبلغ فسيتأكد طلبك تلقائيًا خلال دقائق. رقم طلبك: {r}',{r:esc(r.ref)})}</p><a class="btn" href="index.html">${t('الرئيسية')}</a></div>`;
+  }catch(e){$('#co-body').innerHTML=`<div class="empty" style="margin-top:20px"><h3>${t('تعذّر تأكيد الدفع')}</h3><p>${esc(e.message)}</p><a class="btn" href="cart.html">${t('السلة')}</a></div>`}
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const body=$('#co-body'), qs=new URLSearchParams(location.search);
+  if(qs.get('session_id')&&API.on)return afterStripe(qs.get('session_id'));
+  if(!Cart.count())return emptyCart();
+  if(qs.get('canceled'))toast(t('لم يكتمل الدفع. سلتك ما زالت محفوظة.'));
+  const c=Country.c, eu=c.region==='EU';
+  body.innerHTML=`<form class="cart-grid" id="f" novalidate>
+  <div style="display:grid;gap:20px">
+    <section class="panel"><h2>${t('بيانات التوصيل')}</h2>
+      <p class="note" style="margin-bottom:14px">${t('الشحن إلى: {c}. لتغيير الدولة أو العملة استخدم القائمة أعلى الصفحة.',{c:`<b>${esc(Country.name(c))}</b> (${c.cur})`})}</p>
+      ${user?'':`<p class="note" style="margin-bottom:14px">${t('عندك حساب؟')} <a class="link" href="login.html">${t('سجّل الدخول')}</a> ${t('لتتبع طلباتك. أو أكمل كزائر.')}</p>`}
+      <div class="form-grid">
+        <div class="field"><label for="n">${t('الاسم بالكامل')}</label><input id="n" autocomplete="name" value="${user?esc(user.name):''}" required><span class="m"></span></div>
+        <div class="field"><label for="ph">${t('رقم الموبايل')}</label><input id="ph" type="tel" inputmode="tel" autocomplete="tel" placeholder="${Country.isEG?'01xxxxxxxxx':'+966 5x xxx xxxx'}" dir="ltr" required><span class="m"></span></div>
+        <div class="field full"><label for="em">${Country.isEG?t('البريد الإلكتروني (اختياري)'):t('البريد الإلكتروني')}</label><input id="em" type="email" autocomplete="email" dir="ltr" value="${user?esc(user.email):''}"><span class="m"></span></div>
+        ${Country.isEG?`<div class="field"><label for="gov">${t('المحافظة')}</label><select id="gov" required><option value="">${t('اختر المحافظة')}</option>${GOVERNORATES.map(g=>`<option value="${esc(g[0])}">${esc(t(g[0]))}</option>`).join('')}</select><span class="m"></span></div>`
+          :`<div class="field"><label for="gov">${t('المنطقة / الولاية (اختياري)')}</label><input id="gov" autocomplete="address-level1"><span class="m"></span></div>`}
+        <div class="field"><label for="city">${Country.isEG?t('المدينة / المنطقة'):t('المدينة')}</label><input id="city" autocomplete="address-level2" required><span class="m"></span></div>
+        ${Country.isEG?'':`<div class="field"><label for="zip">${eu?t('الرمز البريدي'):t('الرمز البريدي (اختياري)')}</label><input id="zip" autocomplete="postal-code" dir="ltr"><span class="m"></span></div>`}
+        <div class="field full"><label for="ad">${t('العنوان بالتفصيل')}</label><input id="ad" autocomplete="street-address" placeholder="${t('الشارع، رقم العمارة، الدور، الشقة')}" required><span class="m"></span></div>
+        <div class="field full"><label for="nt">${t('ملاحظات للمندوب (اختياري)')}</label><textarea id="nt" placeholder="${t('علامة مميزة قريبة، أو مواعيد مناسبة للاستلام')}"></textarea></div>
+      </div></section>
+    <section class="panel"><h2>${t('طريقة الدفع')}</h2>
+      <div class="pay">
+        ${Country.isEG?`<label><input type="radio" name="pay" value="cod" checked><span><b>${t('الدفع عند الاستلام')}</b><small>${t('ادفع نقدًا للمندوب بعد فحص الطلب.')}</small></span></label>`:''}
+        <label class="${cardOK?'':'off'}"><input type="radio" name="pay" value="card" ${cardOK?'':'disabled'} ${Country.isEG?'':'checked'}><span><b>${t('بطاقة بنكية (Visa / Mastercard) عبر Stripe')}</b><small>${cardOK?(API.on?t('ستنتقل إلى صفحة دفع آمنة من Stripe.'):t('عرض تجريبي: لن يُخصم أي مبلغ.')):t('غير متاح حاليًا.')}</small></span></label>
+      </div></section>
+  </div>
+  <aside class="panel" style="position:sticky;top:90px"><h2>${t('طلبك')}</h2>
+    <div id="mini">${Cart.lines().map(l=>`<div class="line" style="grid-template-columns:56px 1fr auto;gap:10px;padding:10px 0"><div class="t" style="padding:4px">${Cart.thumb(l)}</div><div><h4 style="font-size:14px">${esc(pName(l.p))}</h4><small>${esc(t(l.color))} — ${esc(l.size)} × ${num(l.qty)}</small></div><div class="lp" style="font-size:16px">${fmtC(l.unit*l.qty)}</div></div>`).join('')}</div>
+    <div class="sum" id="sum" style="margin-top:12px"></div>
+    <div class="err" id="gerr" role="alert"></div>
+    <button class="btn tape-btn block" style="margin-top:18px" id="place">${t('تأكيد الطلب')}</button>
+    <p style="font-size:13px;color:var(--mute);margin-top:10px">${t('بالضغط على تأكيد الطلب توافق على سياسة الاستبدال والاسترجاع.')}</p>
+  </aside></form>`;
+  renderSum(); if(Country.isEG)$('#gov').onchange=renderSum;
+  const rules={
+    n:v=>v.trim().split(/\s+/).length>=2||t('اكتب الاسم الأول والأخير.'),
+    ph:v=>PHONE.test(v.trim())||(Country.isEG?t('رقم الموبايل لازم يكون ١١ رقم ويبدأ بـ 01.'):t('اكتب رقم الموبايل مع مفتاح الدولة، مثل +966501234567.')),
+    em:v=>(v?/^\S+@\S+\.\S+$/.test(v):Country.isEG)||(v?t('اكتب بريدًا صحيحًا مثل name@example.com.'):t('البريد الإلكتروني مطلوب لإرسال إيصال الدفع.')),
+    city:v=>v.trim().length>1||t('اكتب المدينة أو المنطقة.'),
+    ad:v=>v.trim().length>=8||t('اكتب العنوان بالتفصيل (٨ أحرف على الأقل).')};
+  if(Country.isEG)rules.gov=v=>!!v||t('اختر المحافظة.');
+  if(eu)rules.zip=v=>v.trim().length>=3||t('اكتب الرمز البريدي.');
+  const check=id=>{const el=$('#'+id),r=rules[id](el.value),f=el.closest('.field');f.classList.toggle('bad',r!==true);f.querySelector('.m').textContent=r===true?'':r;return r===true};
+  Object.keys(rules).forEach(id=>$('#'+id).addEventListener('blur',()=>check(id)));
+  $('#f').onsubmit=async e=>{
+    e.preventDefault();
+    const ok=Object.keys(rules).map(check).every(Boolean);
+    if(!ok){const b=$('.field.bad input,.field.bad select');b&&b.focus();return}
+    const pay=($('input[name=pay]:checked')||{}).value||'cod';
+    const gov=$('#gov').value.trim(), s=summary(Country.isEG?gov:'');
+    const customer={name:$('#n').value.trim(),phone:$('#ph').value.replace(/\s/g,''),email:$('#em').value.trim(),gov,city:$('#city').value.trim(),address:$('#ad').value.trim(),postal:Country.isEG?'':$('#zip').value.trim(),notes:$('#nt').value.trim()};
+    const btn=$('#place'); btn.disabled=true; btn.textContent=t('جاري إرسال الطلب…'); $('#gerr').textContent='';
+    try{
+      if(API.on){
+        const r=await API.call('/orders','POST',{country:Country.code,paymentMethod:pay,lang:LANG,customer,coupon:(Cart.coupon()||{}).code||'',items:Cart.lines().map(l=>({id:l.p.id,color:l.color,size:l.size,qty:l.qty}))});
+        if(r.url){location.href=r.url;return}
+        Cart.clear(); showDone({ref:r.ref,total:r.total,currency:r.currency,pay,phone:customer.phone});
+      }else{
+        const order={id:'SH-'+Date.now().toString().slice(-6),date:new Date().toISOString(),status:'new',country:Country.code,currency:c.cur,payment:pay,customer:{...customer},
+          items:Cart.lines().map(l=>({id:l.p.id,name:l.p.name,color:l.color,size:l.size,qty:l.qty,price:l.unit/100})),
+          subtotal:s.sub/100,discount:s.d/100,coupon:(Cart.coupon()||{}).code||null,shipping:(s.sh||0)/100,total:s.total/100,totalEgp:s.total/100/c.rate};
+        store.set('sh_orders',[order,...store.get('sh_orders',[])]);
+        Cart.clear(); showDone({ref:order.id,total:order.total,currency:c.cur,pay,phone:customer.phone});
+      }
+    }catch(err){btn.disabled=false;btn.textContent=t('تأكيد الطلب');$('#gerr').textContent=err.message}
+  };
+});
+</script>
+</body>
+</html>
